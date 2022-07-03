@@ -21,7 +21,7 @@ select
   trafficSource.source
   , sum(totals.visits) as total_visit
   , sum(totals.bounces) as total_no_of_bounces
-	, (sum(totals.bounces)/sum(totals.visits)) as bounce_rate
+  , (sum(totals.bounces)/sum(totals.visits)) as bounce_rate
 from `bigquery-public-data.google_analytics_sample.ga_sessions_201707*`
 group by trafficSource.source
 
@@ -64,7 +64,7 @@ group by status, month
 #standardSQL
 SELECT 
 	format_date('%Y%m' , parse_date('%Y%m%d' , date)) as month
-    , sum(totals.transactions) / count(distinct fullVisitorId) as avg_totals_transactions_per_user
+	, sum(totals.transactions) / count(distinct fullVisitorId) as avg_totals_transactions_per_user
 FROM `bigquery-public-data.google_analytics_sample.ga_sessions_201707*` 
 where totals.transactions >= 1
 group by month
@@ -73,7 +73,7 @@ group by month
 #standardSQL
 SELECT 
 	format_date('%Y%m' , parse_date('%Y%m%d' , date)) as month
-   , sum(totals.totalTransactionRevenue) / count(visitId) as avg_revenue_by_user_per_visit
+	, sum(totals.totalTransactionRevenue) / count(visitId) as avg_revenue_by_user_per_visit
 FROM `bigquery-public-data.google_analytics_sample.ga_sessions_201707*` 
 where totals.transactions is not null
 group by month
@@ -83,15 +83,15 @@ group by month
 with bang1 as 
 (
 select 
-    fullVisitorId
+	fullVisitorId
 from `bigquery-public-data.google_analytics_sample.ga_sessions_201707*`
 	, UNNEST (hits) hits
 	, UNNEST (hits.product) product
 where product.v2ProductName  = "YouTube Men's Vintage Henley" and product.productRevenue is not null
 )
 select
-  product.v2ProductName as other_pur_product
-  , sum(product.productQuantity) as Quantity
+	product.v2ProductName as other_pur_product
+	, sum(product.productQuantity) as Quantity
 from `bigquery-public-data.google_analytics_sample.ga_sessions_201707*`
 	, UNNEST (hits) hits
 	, UNNEST (hits.product) product
@@ -118,7 +118,7 @@ group by month
 	select format_date('%Y%m',parse_date('%Y%m%d', date)) as month
 	, count(hits.eCommerceAction.action_type) as num_add
 from `bigquery-public-data.google_analytics_sample.ga_sessions_2017*`
-	,	UNNEST(hits) hits
+	, UNNEST(hits) hits
 where date between '20170101' and '20170331' and hits.eCommerceAction.action_type = '3'
 group by month
 )
