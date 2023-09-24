@@ -1,0 +1,49 @@
+# Yêu cầu: sử dụng 2 bảng trong database
+  # Table 1: TBL_FILED_APPL (APPL_ID)
+  # Table 2: TBL_FILED_BUCKET (APPL_ID, BUCKET_BOM, AMT_B1_FN, AMT_B2_FN, AMT_B3_FN, AMT_B4_FN, AMT_B5_FN, AMT_B6_FN)
+# Từ 2 bảng trên hãy transform data thành 1 bảng SPB36_FIELD_TOTAL_BUCKET(APPL_ID, BUCKET_NO, BUCKET_AMT_FINAL)
+# Trong đó: 
+  # BUCKET_NO là thứ tự tất cả các bucket của 1 APPL_ID (ví dụ: APPL_ID có BUCKET_BOM = 3 thì BUCKET_NO có 3 giá trị là 1, 2, 3)
+  # BUCKET_AMT_FINAL là bucket amount tương ứng với từng BUCKET_NO (lấy từ giá trị của các cột AMT_B1_FN, AMT_B2_FN, AMT_B3_FN)
+# Lưu ý: 
+  # Nếu BUCKET_BOM > số cột bucket amount thì những dòng BUCKET_NO chưa có giá trị bucket amount sẽ lấy theo số bucket amount của dòng có BUCKET_NO lớn nhất 
+  # (ví dụ BUCKET_BOM = 7 thì BUCKET_AMT_FINAL của BUCKET_NO = 7 sẽ là AMT_B6_FN)
+  # Nếu BUCKET_BOM = 0 thì BUCKET_NO = 0 có BUCKET_AMT_FINAL = AMT_B1_FN
+
+
+
+create table SPB36_FIELD_TOTAL_BUCKET as
+with appl_bucket as (
+select a.APPL_ID
+          , b.BUCKET_BOM
+          , b.AMT_B1_FN, b.AMT_B2_FN, b.AMT_B3_FN, b.AMT_B4_FN, b.AMT_B5_FN, b.AMT_B6_FN
+from TBL_FIELD_APPL a
+left join TBL_FIELD_BUCKET b on a.MONTH = b.MONTH and a.APPL_ID = b.APPL_ID
+where b.RUN_MONTH = to_char(sysdate,'yyyy/mm') 
+)
+, unpivot_bucket as (
+select a.*
+     , b.BUCKET_NO
+     , case when b.BUCKET_NO = 1 and nvl(a.AMT_B1_FN,0) > 0 then a.AMT_B1_FN
+            when b.BUCKET_NO = 2 and nvl(a.AMT_B2_FN,0) > 0 then a.AMT_B2_FN
+            when b.BUCKET_NO = 3 and nvl(a.AMT_B3_FN,0) > 0 then a.AMT_B3_FN
+            when b.BUCKET_NO = 4 and nvl(a.AMT_B4_FN,0) > 0 then a.AMT_B4_FN
+            when b.BUCKET_NO = 5 and nvl(a.AMT_B5_FN,0) > 0 then a.AMT_B5_FN
+            when b.BUCKET_NO = 6 and nvl(a.AMT_B6_FN,0) > 0 then a.AMT_B6_FN
+            end as BUCKET_AMT
+from appl_bucket a
+  , (select level as BUCKET_NO from dual
+            connect by level <= (select max(BUCKET_BOM) from TBL_FIELD_BUCKET where RUN_MONTH = to_char(sysdate,'yyyy/mm'))) b
+where b.BUCKET_NO <= a.BUCKET_BOM
+union all
+select b0.*
+     , 0 BUCKET_NO
+     , b0.AMT_B1_FN BUCKET_AMT
+from appl_bucket b0
+where b0.BUCKET_BOM = 0
+)
+select a.APPL_ID, a.BUCKET_BOM, a.BUCKET_NO, a.BUCKET_AMT
+     , nvl(a.BUCKET_AMT,c.BUCKET_AMT) BUCKET_AMT_FINAL
+from unpivot_bucket a
+left join (select APPL_ID, max(BUCKET_NO) MAX_BUCKET from unpivot_bucket where BUCKET_AMT is not null group by APPL_ID) b on a.APPL_ID = b.APPL_ID
+left join unpivot_bucket c on c.APPL_ID = a.APPL_ID and c.BUCKET_NO = b.MAX_BUCKET;
